@@ -101,6 +101,29 @@ validate_backup() {
     
     local errors=0
     
+    # Check Kerberos backup if enabled
+    if [ "${SOLR_KERBEROS_ENABLED:-false}" = "true" ]; then
+        if [ -d "$backup_dir/kerberos_backup" ]; then
+            print_success "Kerberos backup directory found"
+            
+            if [ -f "$backup_dir/kerberos_backup/kerberos_env.sh" ]; then
+                print_success "Kerberos environment configuration found"
+            else
+                print_warning "Kerberos environment configuration missing"
+            fi
+            
+            if [ -f "$backup_dir/kerberos_backup/krb5.conf" ]; then
+                print_success "Kerberos configuration (krb5.conf) found in backup"
+            else
+                print_warning "Kerberos configuration (krb5.conf) not found in backup"
+                errors=$((errors + 1))
+            fi
+        else
+            print_error "Kerberos backup directory missing (required when Kerberos enabled)"
+            errors=$((errors + 1))
+        fi
+    fi
+    
     # Check ZooKeeper backup
     if [ -d "$backup_dir/zookeeper_backup" ]; then
         print_success "ZooKeeper backup directory found"
@@ -163,6 +186,38 @@ check_prerequisites() {
     else
         print_error "Java not found. Solr requires Java to run."
         errors=$((errors + 1))
+    fi
+    
+    # Check Kerberos tools if Kerberos is enabled
+    if [ "${SOLR_KERBEROS_ENABLED:-false}" = "true" ]; then
+        print_status "Checking Kerberos prerequisites..."
+        
+        if command -v kinit &> /dev/null; then
+            print_success "kinit found"
+        else
+            print_error "kinit not found. Install Kerberos client tools (krb5-user)."
+            errors=$((errors + 1))
+        fi
+        
+        if command -v klist &> /dev/null; then
+            print_success "klist found"
+        else
+            print_error "klist not found. Install Kerberos client tools (krb5-user)."
+            errors=$((errors + 1))
+        fi
+        
+        if command -v kdestroy &> /dev/null; then
+            print_success "kdestroy found"
+        else
+            print_warning "kdestroy not found. Ticket cleanup may be manual."
+        fi
+        
+        # Check if curl supports SPNEGO/Negotiate
+        if curl --help all 2>&1 | grep -q "negotiate"; then
+            print_success "curl supports Kerberos authentication (--negotiate)"
+        else
+            print_warning "curl may not support Kerberos authentication"
+        fi
     fi
     
     # Check curl
@@ -237,8 +292,24 @@ quick_migration_test() {
     
     print_status "Running quick migration test against $solr_url"
     
+    # Prepare curl command with Kerberos authentication if needed
+    local curl_cmd="curl -s"
+    if [ "${SOLR_KERBEROS_ENABLED:-false}" = "true" ]; then
+        print_status "Using Kerberos authentication for testing..."
+        curl_cmd="curl -s --negotiate -u :"
+        
+        # Check if we have a valid Kerberos ticket
+        if command -v klist &> /dev/null; then
+            if klist -s 2>/dev/null; then
+                print_success "Valid Kerberos ticket found"
+            else
+                print_warning "No valid Kerberos ticket. You may need to run 'kinit'"
+            fi
+        fi
+    fi
+    
     # Test 1: Basic connectivity
-    if curl -s "$solr_url/admin/info/system" > /dev/null; then
+    if $curl_cmd "$solr_url/admin/info/system" > /dev/null; then
         print_success "✓ Solr is accessible"
     else
         print_error "✗ Cannot connect to Solr"
@@ -246,7 +317,7 @@ quick_migration_test() {
     fi
     
     # Test 2: Admin API
-    local admin_response=$(curl -s "$solr_url/admin/cores?action=STATUS&wt=json")
+    local admin_response=$($curl_cmd "$solr_url/admin/cores?action=STATUS&wt=json")
     if echo "$admin_response" | grep -q "responseHeader"; then
         print_success "✓ Admin API is working"
     else
@@ -255,13 +326,44 @@ quick_migration_test() {
     fi
     
     # Test 3: Collections (if in cloud mode)
-    local collections_response=$(curl -s "$solr_url/admin/collections?action=CLUSTERSTATUS&wt=json" 2>/dev/null)
+    local collections_response=$($curl_cmd "$solr_url/admin/collections?action=CLUSTERSTATUS&wt=json" 2>/dev/null)
     if echo "$collections_response" | grep -q "cluster"; then
         print_success "✓ Cloud mode is active"
         local collection_count=$(echo "$collections_response" | jq -r '.cluster.collections | length' 2>/dev/null || echo "unknown")
         print_status "  Collections found: $collection_count"
     else
         print_status "✓ Standalone mode (no collections API)"
+    fi
+    
+    # Test ZooKeeper connectivity
+    print_status "Testing ZooKeeper connectivity..."
+    local zk_status=$($curl_cmd "$solr_url/admin/zookeeper?detail=true&path=/&wt=json" 2>/dev/null || echo "")
+    
+    if echo "$zk_status" | grep -q "znode"; then
+        print_success "✓ ZooKeeper is accessible and contains data"
+    else
+        print_warning "ZooKeeper connectivity test failed or no data found"
+    fi
+    
+    # Test Kerberos authentication if enabled
+    if [ "${SOLR_KERBEROS_ENABLED:-false}" = "true" ]; then
+        print_status "Testing Kerberos authentication..."
+        local auth_test=$($curl_cmd "$solr_url/admin/authentication" 2>/dev/null || echo "")
+        if echo "$auth_test" | grep -q "authentication"; then
+            print_success "✓ Kerberos authentication is working"
+        else
+            print_warning "Kerberos authentication test inconclusive"
+        fi
+        
+        # Check current Kerberos ticket
+        if command -v klist &> /dev/null; then
+            if klist -s 2>/dev/null; then
+                print_success "✓ Valid Kerberos ticket present"
+                klist | head -3 | tail -1
+            else
+                print_warning "No valid Kerberos ticket found"
+            fi
+        fi
     fi
     
     print_success "Quick migration test completed"

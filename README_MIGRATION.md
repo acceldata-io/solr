@@ -23,6 +23,14 @@ Before starting the migration, ensure you have:
 - Administrative access to both nodes
 - curl and rsync utilities (recommended)
 
+### For Kerberos-Enabled Environments:
+
+- Kerberos client tools (kinit, klist, kdestroy)
+- Valid Kerberos keytab file
+- Properly configured krb5.conf
+- JAAS configuration file for Solr
+- curl with SPNEGO/Negotiate support
+
 Check prerequisites with:
 ```bash
 ./solr_migration_helper.sh prerequisites
@@ -54,6 +62,20 @@ chmod +x solr_migration_script.sh
 #### Transfer backup to destination node, then:
 ```bash
 ./solr_migration_script.sh destination /tmp/solr_backup
+```
+
+### For Kerberos-Enabled Environments
+
+#### Set up Kerberos environment:
+```bash
+# Configure Kerberos (see kerberos_setup_example.sh)
+export SOLR_KERBEROS_ENABLED="true"
+export SOLR_KERBEROS_PRINCIPAL="HTTP/$(hostname -f)@YOUR-REALM.COM"
+export SOLR_KERBEROS_KEYTAB="/etc/security/keytabs/solr.keytab"
+export SOLR_JAAS_CONFIG="/path/to/jaas.conf"
+
+# Run migration
+./solr_migration_script.sh full /tmp/solr_backup
 ```
 
 ## Detailed Steps
@@ -127,6 +149,17 @@ The migration scripts use these default paths (modify as needed):
 - **ZooKeeper Data**: `/workspace/solr/server/solr/zoo_data`
 - **Default Backup Location**: `/tmp/solr_migration_backup`
 
+### Kerberos Configuration
+
+For Kerberos-enabled environments, set these environment variables:
+
+- **SOLR_KERBEROS_ENABLED**: Set to "true" to enable Kerberos
+- **SOLR_KERBEROS_PRINCIPAL**: Service principal (e.g., "HTTP/hostname@REALM.COM")
+- **SOLR_KERBEROS_KEYTAB**: Path to keytab file
+- **SOLR_KERBEROS_REALM**: Kerberos realm
+- **SOLR_JAAS_CONFIG**: Path to JAAS configuration file
+- **KRB5_CONFIG**: Path to krb5.conf (default: /etc/krb5.conf)
+
 To modify these paths, edit the configuration section in `solr_migration_script.sh`.
 
 ## Backup Structure
@@ -134,9 +167,14 @@ To modify these paths, edit the configuration section in `solr_migration_script.
 The backup directory contains:
 ```
 backup_directory/
+├── kerberos_backup/       # (If Kerberos enabled)
+│   ├── krb5.conf         # Kerberos configuration
+│   ├── solr.keytab       # Service keytab file
+│   ├── jaas.conf         # JAAS configuration
+│   └── kerberos_env.sh   # Environment setup script
 ├── zookeeper_backup/
 │   ├── zoo_data/          # ZooKeeper data files
-│   └── zk_export.sh       # ZK export utility
+│   └── zk_export.sh       # ZK export utility (Kerberos-aware)
 └── solr_data_backup/
     ├── collections/       # Collection data
     ├── configsets/       # Configuration sets
@@ -168,6 +206,14 @@ backup_directory/
    - Ensure Java is installed and in PATH
    - Check Java version compatibility with Solr
 
+6. **Kerberos Authentication Issues**
+   - Verify keytab file permissions (should be 600)
+   - Test authentication: `kinit -kt /path/to/keytab principal@REALM.COM`
+   - Check ticket status: `klist`
+   - Ensure hostname resolution works properly
+   - Verify JAAS configuration syntax
+   - Check krb5.conf for correct realm and KDC settings
+
 ### Validation Commands
 
 ```bash
@@ -184,6 +230,58 @@ curl http://localhost:8983/solr/admin/collections?action=CLUSTERSTATUS
 curl http://localhost:8983/solr/admin/zookeeper?detail=true&path=/
 ```
 
+## Kerberos Integration
+
+### Setting Up Kerberos Environment
+
+1. **Configure Environment Variables:**
+```bash
+# Use the provided example script
+source ./kerberos_setup_example.sh
+
+# Or set manually:
+export SOLR_KERBEROS_ENABLED="true"
+export SOLR_KERBEROS_PRINCIPAL="HTTP/$(hostname -f)@YOUR-REALM.COM"
+export SOLR_KERBEROS_KEYTAB="/etc/security/keytabs/solr.keytab"
+export SOLR_JAAS_CONFIG="/path/to/jaas.conf"
+```
+
+2. **Create JAAS Configuration:**
+```bash
+# Use the provided template
+cp kerberos_solr_template.conf /path/to/jaas.conf
+# Edit the file to match your environment
+```
+
+3. **Test Kerberos Authentication:**
+```bash
+kinit -kt $SOLR_KERBEROS_KEYTAB $SOLR_KERBEROS_PRINCIPAL
+klist
+```
+
+### Kerberos Migration Features
+
+The migration scripts automatically handle:
+
+- **Kerberos Configuration Backup**: krb5.conf, keytab files, JAAS config
+- **Authentication During Migration**: Automatic kinit before operations
+- **Secure ZooKeeper Export**: Uses Kerberos for ZK operations
+- **Environment Restoration**: Recreates Kerberos environment on destination
+- **Authentication Testing**: Validates Kerberos functionality post-migration
+
+### Kerberos-Specific Commands
+
+```bash
+# Check Kerberos prerequisites
+SOLR_KERBEROS_ENABLED=true ./solr_migration_helper.sh prerequisites
+
+# Test with Kerberos authentication
+SOLR_KERBEROS_ENABLED=true ./solr_migration_helper.sh test http://localhost:8983/solr
+
+# Validate Kerberos backup
+SOLR_KERBEROS_ENABLED=true ./solr_migration_helper.sh validate /tmp/backup
+```
+
 ## Advanced Options
 
 ### Custom ZooKeeper Export
@@ -191,7 +289,7 @@ curl http://localhost:8983/solr/admin/zookeeper?detail=true&path=/
 If you need to export ZooKeeper configuration while Solr is running:
 ```bash
 cd /path/to/backup/zookeeper_backup
-./zk_export.sh /workspace/solr/bin/solr localhost:9983
+./zk_export.sh /workspace/solr/bin/solr localhost:9983 true  # true for Kerberos
 ```
 
 ### Selective Collection Migration

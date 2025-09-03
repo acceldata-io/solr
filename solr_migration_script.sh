@@ -22,6 +22,14 @@ ZK_DATA_DIR="$SOLR_DATA_DIR/zoo_data"
 BACKUP_BASE_DIR="${2:-/tmp/solr_migration_backup}"
 NEW_NODE_IP="${3:-localhost}"
 
+# Kerberos Configuration
+KERBEROS_ENABLED="${SOLR_KERBEROS_ENABLED:-false}"
+KERBEROS_PRINCIPAL="${SOLR_KERBEROS_PRINCIPAL:-}"
+KERBEROS_KEYTAB="${SOLR_KERBEROS_KEYTAB:-}"
+KERBEROS_REALM="${SOLR_KERBEROS_REALM:-}"
+JAAS_CONFIG_FILE="${SOLR_JAAS_CONFIG:-}"
+KRB5_CONFIG="${KRB5_CONFIG:-/etc/krb5.conf}"
+
 # Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -46,6 +54,196 @@ check_solr_status() {
     else
         return 1  # Solr is not running
     fi
+}
+
+# Function to check Kerberos configuration
+check_kerberos_config() {
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Checking Kerberos configuration..."
+        
+        local errors=0
+        
+        # Check KDC connectivity
+        if [ -f "$KRB5_CONFIG" ]; then
+            print_success "Kerberos config found: $KRB5_CONFIG"
+        else
+            print_error "Kerberos config not found: $KRB5_CONFIG"
+            errors=$((errors + 1))
+        fi
+        
+        # Check principal
+        if [ -n "$KERBEROS_PRINCIPAL" ]; then
+            print_success "Kerberos principal configured: $KERBEROS_PRINCIPAL"
+        else
+            print_error "Kerberos principal not specified"
+            errors=$((errors + 1))
+        fi
+        
+        # Check keytab
+        if [ -n "$KERBEROS_KEYTAB" ] && [ -f "$KERBEROS_KEYTAB" ]; then
+            print_success "Kerberos keytab found: $KERBEROS_KEYTAB"
+            
+            # Test keytab validity
+            if command -v klist &> /dev/null; then
+                if klist -k "$KERBEROS_KEYTAB" &> /dev/null; then
+                    print_success "Keytab is valid"
+                else
+                    print_warning "Keytab validation failed"
+                fi
+            fi
+        else
+            print_error "Kerberos keytab not found: $KERBEROS_KEYTAB"
+            errors=$((errors + 1))
+        fi
+        
+        # Check JAAS config
+        if [ -n "$JAAS_CONFIG_FILE" ] && [ -f "$JAAS_CONFIG_FILE" ]; then
+            print_success "JAAS config found: $JAAS_CONFIG_FILE"
+        else
+            print_warning "JAAS config not specified or not found: $JAAS_CONFIG_FILE"
+        fi
+        
+        return $errors
+    else
+        print_status "Kerberos authentication disabled"
+        return 0
+    fi
+}
+
+# Function to backup Kerberos configuration
+backup_kerberos_config() {
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Backing up Kerberos configuration..."
+        
+        local kerberos_backup_dir="$BACKUP_BASE_DIR/kerberos_backup"
+        mkdir -p "$kerberos_backup_dir"
+        
+        # Backup krb5.conf
+        if [ -f "$KRB5_CONFIG" ]; then
+            cp "$KRB5_CONFIG" "$kerberos_backup_dir/"
+            print_success "Backed up Kerberos config: $KRB5_CONFIG"
+        fi
+        
+        # Backup keytab (if specified and exists)
+        if [ -n "$KERBEROS_KEYTAB" ] && [ -f "$KERBEROS_KEYTAB" ]; then
+            cp "$KERBEROS_KEYTAB" "$kerberos_backup_dir/"
+            print_success "Backed up Kerberos keytab: $KERBEROS_KEYTAB"
+        fi
+        
+        # Backup JAAS config
+        if [ -n "$JAAS_CONFIG_FILE" ] && [ -f "$JAAS_CONFIG_FILE" ]; then
+            cp "$JAAS_CONFIG_FILE" "$kerberos_backup_dir/"
+            print_success "Backed up JAAS config: $JAAS_CONFIG_FILE"
+        fi
+        
+        # Create Kerberos environment info
+        cat > "$kerberos_backup_dir/kerberos_env.sh" << EOF
+#!/bin/bash
+# Kerberos environment configuration for migration
+
+export SOLR_KERBEROS_ENABLED="$KERBEROS_ENABLED"
+export SOLR_KERBEROS_PRINCIPAL="$KERBEROS_PRINCIPAL"
+export SOLR_KERBEROS_KEYTAB="$KERBEROS_KEYTAB"
+export SOLR_KERBEROS_REALM="$KERBEROS_REALM"
+export SOLR_JAAS_CONFIG="$JAAS_CONFIG_FILE"
+export KRB5_CONFIG="$KRB5_CONFIG"
+
+# Java system properties for Kerberos
+export SOLR_OPTS="\$SOLR_OPTS -Djava.security.krb5.conf=\$KRB5_CONFIG"
+export SOLR_OPTS="\$SOLR_OPTS -Djava.security.auth.login.config=\$SOLR_JAAS_CONFIG"
+export SOLR_OPTS="\$SOLR_OPTS -Dsolr.kerberos.principal=\$SOLR_KERBEROS_PRINCIPAL"
+export SOLR_OPTS="\$SOLR_OPTS -Dsolr.kerberos.keytab=\$SOLR_KERBEROS_KEYTAB"
+export SOLR_OPTS="\$SOLR_OPTS -Dsolr.kerberos.name.rules=DEFAULT"
+
+echo "Kerberos environment configured for Solr migration"
+EOF
+        chmod +x "$kerberos_backup_dir/kerberos_env.sh"
+        
+        print_success "Kerberos configuration backed up to $kerberos_backup_dir"
+    else
+        print_status "Kerberos disabled, skipping Kerberos backup"
+    fi
+}
+
+# Function to restore Kerberos configuration
+restore_kerberos_config() {
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Restoring Kerberos configuration..."
+        
+        local kerberos_backup_dir="$BACKUP_BASE_DIR/kerberos_backup"
+        
+        if [ ! -d "$kerberos_backup_dir" ]; then
+            print_error "Kerberos backup directory not found: $kerberos_backup_dir"
+            return 1
+        fi
+        
+        # Restore krb5.conf
+        if [ -f "$kerberos_backup_dir/krb5.conf" ]; then
+            sudo cp "$kerberos_backup_dir/krb5.conf" "$KRB5_CONFIG" 2>/dev/null || {
+                print_warning "Could not copy krb5.conf to $KRB5_CONFIG (permission denied)"
+                print_status "Please manually copy $kerberos_backup_dir/krb5.conf to $KRB5_CONFIG"
+            }
+        fi
+        
+        # Restore keytab
+        if [ -f "$kerberos_backup_dir/$(basename "$KERBEROS_KEYTAB")" ] && [ -n "$KERBEROS_KEYTAB" ]; then
+            mkdir -p "$(dirname "$KERBEROS_KEYTAB")"
+            cp "$kerberos_backup_dir/$(basename "$KERBEROS_KEYTAB")" "$KERBEROS_KEYTAB"
+            chmod 600 "$KERBEROS_KEYTAB"  # Secure the keytab
+            print_success "Restored Kerberos keytab: $KERBEROS_KEYTAB"
+        fi
+        
+        # Restore JAAS config
+        if [ -f "$kerberos_backup_dir/$(basename "$JAAS_CONFIG_FILE")" ] && [ -n "$JAAS_CONFIG_FILE" ]; then
+            mkdir -p "$(dirname "$JAAS_CONFIG_FILE")"
+            cp "$kerberos_backup_dir/$(basename "$JAAS_CONFIG_FILE")" "$JAAS_CONFIG_FILE"
+            print_success "Restored JAAS config: $JAAS_CONFIG_FILE"
+        fi
+        
+        # Source the Kerberos environment
+        if [ -f "$kerberos_backup_dir/kerberos_env.sh" ]; then
+            source "$kerberos_backup_dir/kerberos_env.sh"
+            print_success "Kerberos environment variables loaded"
+        fi
+        
+        print_success "Kerberos configuration restored"
+    else
+        print_status "Kerberos disabled, skipping Kerberos restore"
+    fi
+}
+
+# Function to authenticate with Kerberos
+kerberos_authenticate() {
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Authenticating with Kerberos..."
+        
+        if [ -n "$KERBEROS_KEYTAB" ] && [ -f "$KERBEROS_KEYTAB" ] && [ -n "$KERBEROS_PRINCIPAL" ]; then
+            # Authenticate using keytab
+            if command -v kinit &> /dev/null; then
+                kinit -kt "$KERBEROS_KEYTAB" "$KERBEROS_PRINCIPAL"
+                if [ $? -eq 0 ]; then
+                    print_success "Kerberos authentication successful"
+                    
+                    # Show current ticket
+                    if command -v klist &> /dev/null; then
+                        print_status "Current Kerberos ticket:"
+                        klist | head -5
+                    fi
+                else
+                    print_error "Kerberos authentication failed"
+                    return 1
+                fi
+            else
+                print_error "kinit command not found. Install Kerberos client tools."
+                return 1
+            fi
+        else
+            print_warning "Kerberos enabled but keytab or principal not properly configured"
+            return 1
+        fi
+    fi
+    
+    return 0
 }
 
 # Function to stop Solr services
@@ -86,6 +284,9 @@ backup_zookeeper_znodes() {
     local zk_backup_dir="$BACKUP_BASE_DIR/zookeeper_backup"
     mkdir -p "$zk_backup_dir"
     
+    # Authenticate with Kerberos if needed
+    kerberos_authenticate
+    
     # Check if ZooKeeper data directory exists
     if [ -d "$ZK_DATA_DIR" ]; then
         print_status "Backing up ZooKeeper data from $ZK_DATA_DIR"
@@ -105,16 +306,34 @@ backup_zookeeper_znodes() {
     # Create a script to export ZK configuration if Solr is running with embedded ZK
     cat > "$zk_backup_dir/zk_export.sh" << 'EOF'
 #!/bin/bash
-# ZooKeeper export script
+# ZooKeeper export script with Kerberos support
 # This script can be used to export ZK configuration when Solr is running
 
 SOLR_BIN="$1"
 ZK_HOST="${2:-localhost:9983}"
+KERBEROS_ENABLED="${3:-false}"
+
+# Set up Kerberos environment if enabled
+if [ "$KERBEROS_ENABLED" = "true" ] && [ -f "./kerberos_env.sh" ]; then
+    echo "Loading Kerberos environment..."
+    source ./kerberos_env.sh
+fi
 
 if [ -f "$SOLR_BIN" ]; then
     echo "Exporting ZooKeeper configuration..."
+    
+    # Export with Kerberos authentication if enabled
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        echo "Using Kerberos authentication for ZK export..."
+        # Set JAAS config for Solr ZK commands
+        export SOLR_OPTS="$SOLR_OPTS -Djava.security.auth.login.config=$SOLR_JAAS_CONFIG"
+    fi
+    
     $SOLR_BIN zk -z $ZK_HOST -cmd list / -r > zk_tree_structure.txt 2>&1 || echo "ZK export failed or ZK not accessible"
     $SOLR_BIN zk -z $ZK_HOST -cmd get /clusterstate.json > clusterstate.json 2>&1 || echo "Clusterstate export failed"
+    $SOLR_BIN zk -z $ZK_HOST -cmd get /security.json > security.json 2>&1 || echo "Security config export failed (normal if not using security)"
+    $SOLR_BIN zk -z $ZK_HOST -cmd get /solr.xml > solr_zk.xml 2>&1 || echo "Solr ZK config export failed"
+    
     echo "ZK export completed"
 fi
 EOF
@@ -218,9 +437,32 @@ start_solr_services() {
         return 0
     fi
     
+    # Authenticate with Kerberos before starting Solr
+    kerberos_authenticate
+    
     if [ -f "$SOLR_BIN" ]; then
+        # Configure Kerberos environment for Solr startup
+        if [ "$KERBEROS_ENABLED" = "true" ]; then
+            print_status "Configuring Kerberos environment for Solr startup..."
+            
+            # Set Kerberos-related SOLR_OPTS
+            export SOLR_OPTS="$SOLR_OPTS -Djava.security.krb5.conf=$KRB5_CONFIG"
+            if [ -n "$JAAS_CONFIG_FILE" ]; then
+                export SOLR_OPTS="$SOLR_OPTS -Djava.security.auth.login.config=$JAAS_CONFIG_FILE"
+            fi
+            export SOLR_OPTS="$SOLR_OPTS -Dsolr.kerberos.principal=$KERBEROS_PRINCIPAL"
+            export SOLR_OPTS="$SOLR_OPTS -Dsolr.kerberos.keytab=$KERBEROS_KEYTAB"
+            export SOLR_OPTS="$SOLR_OPTS -Dsolr.kerberos.name.rules=DEFAULT"
+            
+            print_status "Kerberos environment configured for Solr"
+        fi
+        
         # Start Solr in cloud mode with embedded ZooKeeper
         print_status "Starting Solr in cloud mode..."
+        if [ "$KERBEROS_ENABLED" = "true" ]; then
+            print_status "Starting with Kerberos authentication enabled..."
+        fi
+        
         $SOLR_BIN start -c -p 8983 -s "$SOLR_DATA_DIR"
         
         # Wait for Solr to start
@@ -249,8 +491,15 @@ start_solr_services() {
 test_solr_services() {
     print_status "Testing Solr services..."
     
+    # Prepare curl command with Kerberos authentication if needed
+    local curl_cmd="curl -s"
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Testing with Kerberos authentication..."
+        curl_cmd="curl -s --negotiate -u :"
+    fi
+    
     # Test basic connectivity
-    if curl -s "http://localhost:8983/solr/admin/info/system" > /dev/null; then
+    if $curl_cmd "http://localhost:8983/solr/admin/info/system" > /dev/null; then
         print_success "Solr is responding to HTTP requests"
     else
         print_error "Solr is not responding to HTTP requests"
@@ -259,7 +508,7 @@ test_solr_services() {
     
     # Test collections status
     print_status "Checking collections status..."
-    local collections_status=$(curl -s "http://localhost:8983/solr/admin/collections?action=CLUSTERSTATUS&wt=json" | jq -r '.cluster.collections | keys[]' 2>/dev/null || echo "")
+    local collections_status=$($curl_cmd "http://localhost:8983/solr/admin/collections?action=CLUSTERSTATUS&wt=json" | jq -r '.cluster.collections | keys[]' 2>/dev/null || echo "")
     
     if [ -n "$collections_status" ]; then
         print_success "Collections found:"
@@ -270,12 +519,23 @@ test_solr_services() {
     
     # Test ZooKeeper connectivity
     print_status "Testing ZooKeeper connectivity..."
-    local zk_status=$(curl -s "http://localhost:8983/solr/admin/zookeeper?detail=true&path=/&wt=json" 2>/dev/null || echo "")
+    local zk_status=$($curl_cmd "http://localhost:8983/solr/admin/zookeeper?detail=true&path=/&wt=json" 2>/dev/null || echo "")
     
     if echo "$zk_status" | grep -q "znode"; then
         print_success "ZooKeeper is accessible and contains data"
     else
         print_warning "ZooKeeper connectivity test failed or no data found"
+    fi
+    
+    # Test Kerberos authentication if enabled
+    if [ "$KERBEROS_ENABLED" = "true" ]; then
+        print_status "Testing Kerberos authentication..."
+        local auth_test=$($curl_cmd "http://localhost:8983/solr/admin/authentication" 2>/dev/null || echo "")
+        if echo "$auth_test" | grep -q "authentication"; then
+            print_success "Kerberos authentication is working"
+        else
+            print_warning "Kerberos authentication test inconclusive"
+        fi
     fi
     
     print_success "Solr service testing completed"
@@ -294,11 +554,16 @@ main() {
     case "$operation" in
         "source")
             print_status "=== SOURCE NODE MIGRATION STEPS ==="
+            check_kerberos_config
             stop_solr_services
+            backup_kerberos_config
             backup_zookeeper_znodes
             backup_solr_data
             print_success "Source node backup completed!"
             print_status "Backup location: $BACKUP_BASE_DIR"
+            if [ "$KERBEROS_ENABLED" = "true" ]; then
+                print_status "Kerberos configuration included in backup"
+            fi
             print_status "Transfer this backup to the destination node and run:"
             print_status "./solr_migration_script.sh destination $BACKUP_BASE_DIR"
             ;;
@@ -306,6 +571,8 @@ main() {
         "destination")
             print_status "=== DESTINATION NODE MIGRATION STEPS ==="
             stop_solr_services
+            restore_kerberos_config
+            check_kerberos_config
             import_zookeeper_znodes
             import_solr_data
             start_solr_services
@@ -316,9 +583,12 @@ main() {
             
         "full")
             print_status "=== FULL MIGRATION (SINGLE NODE) ==="
+            check_kerberos_config
             stop_solr_services
+            backup_kerberos_config
             backup_zookeeper_znodes
             backup_solr_data
+            restore_kerberos_config
             import_zookeeper_znodes
             import_solr_data
             start_solr_services
