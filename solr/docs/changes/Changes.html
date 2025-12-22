@@ -88,7 +88,7 @@
 
     }
 
-    var newerRegex = new RegExp("^(?:v8\\\\.11\\\\.2|v8\\\\.11\\\\.1)");
+    var newerRegex = new RegExp("^(?:v8\\\\.11\\\\.3|v8\\\\.11\\\\.2)");
     function isOlder(listId) {
       return ! newerRegex.test(listId);
     }
@@ -117,8 +117,8 @@
          * the first two releases, or the current URL has a fragment and the
          * fragment refers to the current item or one of its ancestors.
          */
-        if (list.id != 'v8.11.2.list' 
-            && list.id != 'v8.11.1.list'
+        if (list.id != 'v8.11.3.list' 
+            && list.id != 'v8.11.2.list'
             && list.className != 'bulleted-list'
             && (currentAnchor == ''
                 || ! shouldExpand(currentList, currentAnchor, list.id))) {
@@ -141,7 +141,7 @@
       for (var i = 0 ; i < anchors.length; i++) {
         var anchor = anchors[i];
         if (anchor.id != '') {
-          if (anchor.id == 'v8.11.2' || anchor.id == 'v8.11.1') {
+          if (anchor.id == 'v8.11.3' || anchor.id == 'v8.11.2') {
             anchor.title = 'Click to collapse';
           } else {
             anchor.title = 'Click to expand';
@@ -176,7 +176,84 @@
 Most people will find the solr-upgrade-notes.adoc file more approachable.
 <a href="https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc">https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc</a>
 </p>
-<h2><a id="v8.11.2" href="javascript:toggleList('v8.11.2')">Release 8.11.2 </a></h2>
+<h2><a id="v8.11.3" href="javascript:toggleList('v8.11.3')">Release 8.11.3 </a></h2>
+<ul id="v8.11.3.list">
+      <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
+</li>
+  </li>
+  <li><a id="v8.11.3.new_features" href="javascript:toggleList('v8.11.3.new_features')">New Features</a>&nbsp;&nbsp;&nbsp;(1)
+    <ol id="v8.11.3.new_features.list">
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-15694">SOLR-15694</a>, 15715: Node roles and dedicated query coordinator nodes
+<br /><span class="attrib">(Hitesh Khamesra, Ishan Chattopadhyaya, noble)</span></li>
+    </ol>
+  </li>
+  <li><a id="v8.11.3.bug_fixes" href="javascript:toggleList('v8.11.3.bug_fixes')">Bug Fixes</a>&nbsp;&nbsp;&nbsp;(14)
+    <ol id="v8.11.3.bug_fixes.list">
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16429">SOLR-16429</a>: Add AWS STS support in s3-repository
+<br /><span class="attrib">(Josh Souza via Houston Putman and Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-14679">SOLR-14679</a>: Fix continuously growing TLOGs on TLOG replicas
+<br /><span class="attrib">(Viktor Molnár via Houston Putman)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16293">SOLR-16293</a>: Luke request fails for document with a binary field
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16477">SOLR-16477</a>: Collection RENAME api creates broken alias
+<br /><span class="attrib">(Alex Deparvu via Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16274">SOLR-16274</a>: HEAD request for managed resource returns 500 Server Error
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-13219">SOLR-13219</a>: Fix NPE in FieldLengthFeature with non-stored/missing fields
+<br /><span class="attrib">(Nick Veenhof, Tomasz Elendt)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16984">SOLR-16984</a>: Add missing sysProps to redaction logic
+<br /><span class="attrib">(Houston Putman)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16165">SOLR-16165</a>: Rare Deadlock in SlotAcc initialization
+<br /><span class="attrib">(Justin Sweeney, noble)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16110">SOLR-16110</a>: Using Schema/Config API breaks the File-Upload of Config Set File
+<br /><span class="attrib">(Steffen Moldenhauer, Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16451">SOLR-16451</a>: Don't fetch the PRS states while registering the collection watch
+<br /><span class="attrib">(Hitesh Khamesra via Ishan Chattopadhyaya)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16452">SOLR-16452</a>: Do not update PRS states if local version is newer
+<br /><span class="attrib">(Hitesh Khamesra via noble)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16777">SOLR-16777</a>: Schema Designer now correctly manages trust of the ConfigSets it is managing.
+<br /><span class="attrib">(Ishan Chattopadhyaya, Skay, Houston Putman)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17098">SOLR-17098</a>: ZK Credentials and ACLs are no longer sent to all ZK Servers when using Streaming Expressions.
+They will only be used when sent to the default ZK Host.
+<br /><span class="attrib">(Houston Putman, Jan Høydahl, David Smiley, Gus Heck, Qing Xu)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17120">SOLR-17120</a>: Fix NullPointerException in UpdateLog.applyOlderUpdates that can occur if there are multiple partial
+updates of the same document in separate requests using commitWithin.
+<br /><span class="attrib">(Calvin Smith, Christine Poerschke)</span></li>
+    </ol>
+  </li>
+  <li><a id="v8.11.3.optimizations" href="javascript:toggleList('v8.11.3.optimizations')">Optimizations</a>&nbsp;&nbsp;&nbsp;(2)
+    <ol id="v8.11.3.optimizations.list">
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16555">SOLR-16555</a>: SolrIndexSearcher - FilterCache intersections/andNot should not clone bitsets repeatedly
+<br /><span class="attrib">(Kevin Risden, David Smiley)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17004">SOLR-17004</a>: ZkStateReader waitForState should check clusterState before using watchers
+<br /><span class="attrib">(Kevin Risden)</span></li>
+    </ol>
+  </li>
+  <li><a id="v8.11.3.other_changes" href="javascript:toggleList('v8.11.3.other_changes')">Other Changes</a>&nbsp;&nbsp;&nbsp;(9)
+    <ol id="v8.11.3.other_changes.list">
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16141">SOLR-16141</a>: Upgrade Apache Tika to 1.28.4
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16324">SOLR-16324</a>: Upgrade commons-configuration2 to 2.8.0 and commons-text to 1.9
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16332">SOLR-16332</a>: Upgrade Jetty to 9.4.48.v20220622
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16626">SOLR-16626</a>, <a href="http://issues.apache.org/jira/browse/SOLR-16424">SOLR-16424</a>: Upgrade to Netty 4.1.87.Final
+<br /><span class="attrib">(Kevin Risden, janhoy)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16421">SOLR-16421</a>: Upgrade Apache Calcite to 1.32.0 and Avatica to 1.22.0
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16464">SOLR-16464</a>: Upgrade commons-text to 1.10.0
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17025">SOLR-17025</a>: Upgrade Jetty to 9.4.53.v20231009
+<br /><span class="attrib">(Kevin Risden)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-14853">SOLR-14853</a>: Security: Converted enableRemoteStreaming and enableStreamBody solrconfig options into system properties and env vars.
+Attempts to set them the old way are no-op and log a warning.
+<br /><span class="attrib">(David Smiley, janhoy, Ishan Chattopadhyaya)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-16949">SOLR-16949</a>: Restrict certain file types from being uploaded to or downloaded from Config Sets
+<br /><span class="attrib">(janhoy, Houston Putman)</span></li>
+    </ol>
+  </li>
+</ul>
+<h2><a id="v8.11.2" href="javascript:toggleList('v8.11.2')">Release 8.11.2  [2022-06-17]</a></h2>
 <ul id="v8.11.2.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
@@ -246,7 +323,9 @@ but look like nonsense to Calcite, such as AND'd filters on the same multi-value
     </ol>
   </li>
 </ul>
-<h2><a id="v8.11.1" href="javascript:toggleList('v8.11.1')">Release 8.11.1  [2021-12-16]</a></h2>
+<h2><a id="older" href="javascript:toggleList('older')">Older Releases</a></h2>
+<ul id="older.list">
+<h3><a id="v8.11.1" href="javascript:toggleList('v8.11.1')">Release 8.11.1  [2021-12-16]</a></h3>
 <ul id="v8.11.1.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
@@ -295,8 +374,6 @@ to avoid warnings in the security UI
     </ol>
   </li>
 </ul>
-<h2><a id="older" href="javascript:toggleList('older')">Older Releases</a></h2>
-<ul id="older.list">
 <h3><a id="v8.11.0" href="javascript:toggleList('v8.11.0')">Release 8.11.0  [2021-11-16]</a></h3>
 <ul id="v8.11.0.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.

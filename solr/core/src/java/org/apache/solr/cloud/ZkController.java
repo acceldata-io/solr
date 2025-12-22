@@ -106,6 +106,7 @@ import org.apache.solr.core.CloseHook;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoreDescriptor;
+import org.apache.solr.core.NodeRoles;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrCoreInitializationException;
 import org.apache.solr.handler.admin.ConfigSetsHandler;
@@ -164,6 +165,8 @@ public class ZkController implements Closeable {
 
   public final static String COLLECTION_PARAM_PREFIX = "collection.";
   public final static String CONFIGNAME_PROP = "configName";
+
+  public static final byte[] TOUCHED_ZNODE_DATA = "{}".getBytes(StandardCharsets.UTF_8);
 
   static class ContextKey {
 
@@ -698,7 +701,7 @@ public class ZkController implements Closeable {
 
     // if this replica is not a leader, it will be put in recovery state by the leader
     String leader = cd.getCloudDescriptor().getCoreNodeName();
-    if (shard.getReplica(leader) != shard.getLeader()) return;
+    if (!Objects.equals(shard.getReplica(leader), shard.getLeader())) return;
 
     Set<String> liveNodes = getClusterState().getLiveNodes();
     int numActiveReplicas = shard.getReplicas(
@@ -856,6 +859,14 @@ public class ZkController implements Closeable {
       throws KeeperException, InterruptedException, IOException {
     ZkCmdExecutor cmdExecutor = new ZkCmdExecutor(zkClient.getZkClientTimeout());
     cmdExecutor.ensureExists(ZkStateReader.LIVE_NODES_ZKNODE, zkClient);
+    cmdExecutor.ensureExists(ZkStateReader.NODE_ROLES, zkClient);
+    for (NodeRoles.Role role : NodeRoles.Role.values()) {
+      cmdExecutor.ensureExists(NodeRoles.getZNodeForRole(role), zkClient);
+      for (String mode : role.supportedModes()) {
+        cmdExecutor.ensureExists(NodeRoles.getZNodeForRoleMode(role, mode), zkClient);
+      }
+    }
+
     cmdExecutor.ensureExists(ZkStateReader.COLLECTIONS_ZKNODE, zkClient);
     cmdExecutor.ensureExists(ZkStateReader.ALIASES, zkClient);
     cmdExecutor.ensureExists(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH, zkClient);
@@ -1169,6 +1180,27 @@ public class ZkController implements Closeable {
       ops.add(Op.create(nodeAddedPath, json, zkClient.getZkACLProvider().getACLsToAdd(nodeAddedPath), CreateMode.EPHEMERAL));
     }
     zkClient.multi(ops, true);
+    Map<NodeRoles.Role, String> roles = cc.nodeRoles.getRoles();
+
+    try {
+      zkClient.create(nodePath, null, CreateMode.EPHEMERAL, true);
+    } catch (KeeperException.NodeExistsException e) {
+      // ignore , it's already there
+    }
+
+    for (Map.Entry<NodeRoles.Role, String> e : roles.entrySet()) {
+      try {
+        zkClient.create(
+            NodeRoles.getZNodeForRoleMode(e.getKey(), e.getValue()) + "/" + nodeName,
+            null,
+            CreateMode.EPHEMERAL,
+            true);
+      } catch (KeeperException.NodeExistsException ex) {
+        // ignore , it already exists
+      }
+    }
+
+    log.info("non-data nodes now {}",  zkClient.getChildren("/node_roles/data/off", null,true));
   }
 
   public void removeEphemeralLiveNode() throws KeeperException, InterruptedException {
@@ -1655,13 +1687,14 @@ public class ZkController implements Closeable {
         cd.getCloudDescriptor().setLastPublished(state);
       }
       DocCollection coll = zkStateReader.getCollection(collection);
-      if (forcePublish || sendToOverseer(coll, coreNodeName)) {
-        overseerJobQueue.offer(Utils.toJSON(m));
-      } else {
-        if (log.isDebugEnabled()) {
-          log.debug("bypassed overseer for message : {}", Utils.toJSONString(m));
-        }
-        PerReplicaStates perReplicaStates = PerReplicaStates.fetch(coll.getZNode(), zkClient, coll.getPerReplicaStates());
+      if (forcePublish || updateStateDotJson(coll, coreNodeName)) {
+          overseerJobQueue.offer(Utils.toJSON(m));
+      }
+      // extra handling for PRS, we need to write the PRS entries from this node directly,
+      // as overseer does not and should not handle those entries
+      if (coll != null && coll.isPerReplicaState() && coreNodeName != null) {
+        PerReplicaStates perReplicaStates =
+            PerReplicaStates.fetch(coll.getZNode(), zkClient, coll.getPerReplicaStates());
         PerReplicaStatesOps.flipState(coreNodeName, state, perReplicaStates)
             .persist(coll.getZNode(), zkClient);
       }
@@ -1669,18 +1702,17 @@ public class ZkController implements Closeable {
       MDCLoggingContext.clear();
     }
   }
-
   /**
-   * Whether a message needs to be sent to overseer or not
+   * Returns {@code true} if a message needs to be sent to overseer (or done in a distributed way)
+   * to update state.json for the collection
    */
-  static boolean sendToOverseer(DocCollection coll, String replicaName) {
+  static boolean updateStateDotJson(DocCollection coll, String replicaName) {
     if (coll == null) return true;
-    if (coll.getStateFormat() < 2 || !coll.isPerReplicaState()) return true;
+    if (!coll.isPerReplicaState()) return true;
     Replica r = coll.getReplica(replicaName);
     if (r == null) return true;
-    Slice shard = coll.getSlice(r.slice);
-    if (shard == null) return true;//very unlikely
-    if (shard.getState() == Slice.State.RECOVERY) return true;
+    Slice shard = coll.getSlice(r.getSlice());
+    if (shard == null) return true; // very unlikely
     if (shard.getParent() != null) return true;
     for (Slice slice : coll.getSlices()) {
       if (Objects.equals(shard.getName(), slice.getParent())) return true;
@@ -2342,7 +2374,7 @@ public class ZkController implements Closeable {
             // restart the replication thread to ensure the replication is running in each new replica
             // especially if previous role is "leader" (i.e., no replication thread)
             stopReplicationFromLeader(coreName);
-            startReplicationFromLeader(coreName, false);
+            startReplicationFromLeader(coreName, true);
           }
         }
       }
@@ -2503,13 +2535,17 @@ public class ZkController implements Closeable {
 
   public static void touchConfDir(ZkSolrResourceLoader zkLoader) {
     SolrZkClient zkClient = zkLoader.getZkController().getZkClient();
+    String configSetZkPath = zkLoader.getConfigSetZkPath();
     try {
-      zkClient.setData(zkLoader.getConfigSetZkPath(), new byte[]{0}, true);
+      // Ensure that version gets updated by replacing data with itself.
+      // If there is no existing data then set it to byte[] {0}.
+      // This should trigger any watchers if necessary as well.
+      zkClient.atomicUpdate(configSetZkPath, bytes -> bytes == null ? TOUCHED_ZNODE_DATA : bytes);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt(); // Restore the interrupted status
       }
-      final String msg = "Error 'touching' conf location " + zkLoader.getConfigSetZkPath();
+      final String msg = "Error 'touching' conf location " + configSetZkPath;
       log.error(msg, e);
       throw new SolrException(ErrorCode.SERVER_ERROR, msg, e);
 
@@ -2759,9 +2795,44 @@ public class ZkController implements Closeable {
    */
   public void publishNodeAsDown(String nodeName) {
     log.info("Publish node={} as DOWN", nodeName);
+    try {
+      boolean sendToOverseer = false;
+      // Create a concurrently accessible set to avoid repeating collections
+      Set<String> processedCollections = new HashSet<>();
+      for (CoreDescriptor cd : cc.getCoreDescriptors()) {
+        String collName = cd.getCollectionName();
+        DocCollection coll = null;
+        if (collName != null
+            && processedCollections.add(collName)
+            && (coll = zkStateReader.getCollection(collName)) != null
+            && coll.isPerReplicaState()) {
+          final List<String> replicasToDown = new ArrayList<>(coll.getSlicesMap().size());
+          coll.forEachReplica(
+              (s, replica) -> {
+                if (replica.getNodeName().equals(nodeName)) {
+                  replicasToDown.add(replica.getName());
+                }
+              });
+          PerReplicaStatesOps.downReplicas(
+                  replicasToDown,
+                  PerReplicaStates.fetch(
+                      coll.getZNode(), zkClient, coll.getPerReplicaStates()))
+              .persist(coll.getZNode(), zkClient);
+        }
+        if (coll != null && !coll.isPerReplicaState()) {
+          sendToOverseer = true;
+        }
+      }
+
+      // Only send downnode message to overseer if we have to. We are trying to avoid the overhead
+      // from PRS collections, as it takes awhile to process downnode message by loading
+      // the DocCollection even if it does no further processing.
+      // In the future, we should optimize the handling on Solr side to speed up PRS DocCollection
+      // read on operations that do not require actual replica information.
+      if(!sendToOverseer) return;
+
     ZkNodeProps m = new ZkNodeProps(Overseer.QUEUE_OPERATION, OverseerAction.DOWNNODE.toLower(),
         ZkStateReader.NODE_NAME_PROP, nodeName);
-    try {
       overseer.getStateUpdateQueue().offer(Utils.toJSON(m));
     } catch (AlreadyClosedException e) {
       log.info("Not publishing node as DOWN because a resource required to do so is already closed.");

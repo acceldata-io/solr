@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 import org.apache.solr.cluster.api.SimpleMap;
+import org.apache.solr.common.IteratorWriter;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.annotation.JsonProperty;
@@ -132,7 +133,7 @@ public class PerReplicaStates implements ReflectMapWriter {
     try {
       if (current != null) {
         Stat stat = zkClient.exists(current.path, null, true);
-        if (stat == null) return new PerReplicaStates(path, -1, Collections.emptyList());
+        if (stat == null) return new PerReplicaStates(path, 0, Collections.emptyList());
         if (current.cversion == stat.getCversion()) return current;// not modifiedZkStateReaderTest
       }
       Stat stat = new Stat();
@@ -327,4 +328,27 @@ public class PerReplicaStates implements ReflectMapWriter {
     }
   }
 
+  @Override
+  public void writeMap(EntryWriter ew) throws IOException {
+    ReflectMapWriter.super.writeMap(
+        new EntryWriter() {
+          @Override
+          public EntryWriter put(CharSequence k, Object v) throws IOException {
+            if ("states".equals(k.toString())) {
+              ew.put(
+                  "states",
+                  (IteratorWriter)
+                      iw -> states.forEachEntry((s, state) -> iw.addNoEx(state.toString())));
+            } else {
+              ew.put(k, v);
+            }
+            return this;
+          }
+        });
+  }
+  public static class LazyPrsSupplier extends DocCollection.PrsSupplier {
+    public LazyPrsSupplier(SolrZkClient zkClient, String collectionPath) {
+      super(() -> fetch(collectionPath, zkClient, null));
+    }
+  }
 }

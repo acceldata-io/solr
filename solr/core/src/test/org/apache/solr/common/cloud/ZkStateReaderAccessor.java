@@ -16,6 +16,7 @@
  */
 package org.apache.solr.common.cloud;
 
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -32,5 +33,7 @@ public class ZkStateReaderAccessor {
     return zkStateReader.getStateWatchers(collection);
   }
 
-
+  public Set<String> getWatchedCollections() {
+    return Collections.unmodifiableSet(zkStateReader.getCollectionWatches().keySet());
+  }
 }

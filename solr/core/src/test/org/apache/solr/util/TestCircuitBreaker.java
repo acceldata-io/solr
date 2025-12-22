@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.util.LuceneTestCase;
 
 import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
 import org.apache.solr.SolrTestCaseJ4;
@@ -46,6 +47,7 @@ import org.junit.rules.TestRule;
 import static org.hamcrest.CoreMatchers.containsString;
 
 @SuppressWarnings({"rawtypes"})
+@LuceneTestCase.BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-17061")
 public class TestCircuitBreaker extends SolrTestCaseJ4 {
   private final static int NUM_DOCS = 20;
 
@@ -57,6 +59,8 @@ public class TestCircuitBreaker extends SolrTestCaseJ4 {
     System.setProperty("filterCache.enabled", "false");
     System.setProperty("queryResultCache.enabled", "false");
     System.setProperty("documentCache.enabled", "true");
+    System.setProperty("solr.enableRemoteStreaming", "true");
+    System.setProperty("solr.enableStreamBody", "true");
 
     initCore("solrconfig-memory-circuitbreaker.xml", "schema.xml");
     for (int i = 0 ; i < NUM_DOCS ; i ++) {

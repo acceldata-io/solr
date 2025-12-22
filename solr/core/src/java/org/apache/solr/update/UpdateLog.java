@@ -959,8 +959,13 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     for (String fieldName : olderDoc.getFieldNames()) {
       // if the newerDoc has this field, then this field from olderDoc can be ignored
       if (!newerDoc.containsKey(fieldName) && (mergeFields == null || mergeFields.contains(fieldName))) {
-        for (Object val : olderDoc.getFieldValues(fieldName)) {
-          newerDoc.addField(fieldName, val);
+        Collection<Object> values = olderDoc.getFieldValues(fieldName);
+        if (values == null) {
+          newerDoc.addField(fieldName, null);
+        } else {
+          for (Object val : values) {
+            newerDoc.addField(fieldName, val);
+          }
         }
       }
     }
@@ -1838,7 +1843,7 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
 
         UpdateRequestProcessorChain processorChain = req.getCore().getUpdateProcessingChain(null);
         UpdateRequestProcessor proc = processorChain.createProcessor(req, rsp);
-        OrderedExecutor executor = inSortedOrder ? null : req.getCore().getCoreContainer().getReplayUpdatesExecutor();
+        OrderedExecutor executor = inSortedOrder ? null : req.getCoreContainer().getReplayUpdatesExecutor();
         AtomicInteger pendingTasks = new AtomicInteger(0);
         AtomicReference<SolrException> exceptionOnExecuteUpdate = new AtomicReference<>();
 
