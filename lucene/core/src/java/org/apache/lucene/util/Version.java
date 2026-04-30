@@ -308,13 +308,13 @@ public final class Version {
 
   /**
    * Match settings and bugs in Lucene's 8.11.2 release.
-   * @deprecated (8.11.3.3.3.6.3-102) Use latest
+   * @deprecated (8.11.3.3.3.6.3-103) Use latest
    */
   @Deprecated
   public static final Version LUCENE_8_11_2 = new Version(8, 11, 2);
 
   /**
-   * Match settings and bugs in Lucene's 8.11.3.3.3.6.3-102 release.
+   * Match settings and bugs in Lucene's 8.11.3.3.3.6.3-103 release.
    * <p>
    * Use this to get the latest &amp; greatest settings, bug
    * fixes, etc, for Lucene.
