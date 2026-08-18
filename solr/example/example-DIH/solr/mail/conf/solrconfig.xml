@@ -35,7 +35,7 @@
        that you fully re-index after changing this setting as it can
        affect both how text is indexed and queried.
   -->
-  <luceneMatchVersion>8.11.4</luceneMatchVersion>
+  <luceneMatchVersion>8.11.4.3.4.3.0-1</luceneMatchVersion>
 
   <!-- <lib/> directives can be used to instruct Solr to load any Jars
        identified and use them to resolve any "plugins" specified in
@@ -378,7 +378,7 @@
     <!-- Solr Internal Query Caches
 
          There are four implementations of cache available for Solr:
-         LRUCache, based on a synchronized LinkedHashMap, 
+         LRUCache, based on a synchronized LinkedHashMap,
          LFUCache and FastLRUCache, based on a ConcurrentHashMap, and CaffeineCache -
          a modern and robust cache implementation. Note that in Solr 9.0
          only CaffeineCache will be available, other implementations are now
@@ -691,7 +691,7 @@
        <int name="rows">10</int>
        <str name="df">text</str>
        <!-- Change from JSON to XML format (the default prior to Solr 7.0)
-          <str name="wt">xml</str> 
+          <str name="wt">xml</str>
          -->
      </lst>
     <!-- In addition to defaults, "appends" params can be specified

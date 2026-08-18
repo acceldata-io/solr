@@ -36,7 +36,7 @@
    that you fully re-index after changing this setting as it can
    affect both how text is indexed and queried.
   -->
-  <luceneMatchVersion>8.11.4</luceneMatchVersion>
+  <luceneMatchVersion>8.11.4.3.4.3.0-1</luceneMatchVersion>
 
   <!-- Load Data Import Handler and Apache Tika (extraction) libraries -->
   <lib dir="${solr.install.dir:../../../..}/dist/" regex="solr-dataimporthandler-.*\.jar"/>
@@ -47,7 +47,7 @@
       <str name="echoParams">explicit</str>
       <str name="df">text</str>
        <!-- Change from JSON to XML format (the default prior to Solr 7.0)
-          <str name="wt">xml</str> 
+          <str name="wt">xml</str>
          -->
     </lst>
   </requestHandler>
