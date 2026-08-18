@@ -229,15 +229,23 @@ public class BackupManager {
    *
    * @param sourceConfigName The name of the config to be copied
    * @param targetConfigName  The name of the config to be created.
+   * @param isTrusted  Whether the config should be trusted
    * @throws IOException in case of I/O errors.
    */
-  public void uploadConfigDir(String sourceConfigName, String targetConfigName)
+  public void uploadConfigDir(String sourceConfigName, String targetConfigName,  boolean isTrusted)
           throws IOException {
     URI source = repository.resolveDirectory(getZkStateDir(), CONFIG_STATE_DIR, sourceConfigName);
     Preconditions.checkState(repository.exists(source), "Path {} does not exist", source);
     Preconditions.checkState(repository.getPathType(source) == PathType.DIRECTORY,
             "Path {} is not a directory", source);
-    uploadToZk(zkStateReader.getZkClient(), source, CONFIG_STATE_DIR + "/" + targetConfigName);
+    String destZkPath = CONFIG_STATE_DIR + "/" + targetConfigName;
+    try {
+      byte[] baseZnodeData =  ("{\"trusted\": " + isTrusted + "}").getBytes(StandardCharsets.UTF_8);
+      zkStateReader.getZkClient().makePath(destZkPath, baseZnodeData, true);
+    } catch (KeeperException | InterruptedException e) {
+      throw new IOException(SolrZkClient.checkInterrupted(e));
+    }
+    uploadToZk(zkStateReader.getZkClient(), source, destZkPath);
   }
 
   /**

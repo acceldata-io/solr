@@ -140,12 +140,6 @@ public class PKIAuthenticationPlugin extends AuthenticationPlugin implements Htt
   @Override
   public boolean doAuthenticate(ServletRequest request, ServletResponse response, FilterChain filterChain) throws Exception {
 
-    String requestURI = ((HttpServletRequest) request).getRequestURI();
-    if (requestURI.endsWith(PublicKeyHandler.PATH)) {
-      numPassThrough.inc();
-      filterChain.doFilter(request, response);
-      return true;
-    }
     long receivedTime = System.currentTimeMillis();
     PKIHeaderData headerData = null;
     String headerV2 = ((HttpServletRequest) request).getHeader(HEADER_V2);

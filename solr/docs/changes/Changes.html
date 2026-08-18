@@ -88,7 +88,7 @@
 
     }
 
-    var newerRegex = new RegExp("^(?:v8\\\\.11\\\\.3|v8\\\\.11\\\\.2)");
+    var newerRegex = new RegExp("^(?:v8\\\\.11\\\\.4|v8\\\\.11\\\\.3)");
     function isOlder(listId) {
       return ! newerRegex.test(listId);
     }
@@ -117,8 +117,8 @@
          * the first two releases, or the current URL has a fragment and the
          * fragment refers to the current item or one of its ancestors.
          */
-        if (list.id != 'v8.11.3.list' 
-            && list.id != 'v8.11.2.list'
+        if (list.id != 'v8.11.4.list' 
+            && list.id != 'v8.11.3.list'
             && list.className != 'bulleted-list'
             && (currentAnchor == ''
                 || ! shouldExpand(currentList, currentAnchor, list.id))) {
@@ -141,7 +141,7 @@
       for (var i = 0 ; i < anchors.length; i++) {
         var anchor = anchors[i];
         if (anchor.id != '') {
-          if (anchor.id == 'v8.11.3' || anchor.id == 'v8.11.2') {
+          if (anchor.id == 'v8.11.4' || anchor.id == 'v8.11.3') {
             anchor.title = 'Click to collapse';
           } else {
             anchor.title = 'Click to expand';
@@ -176,7 +176,23 @@
 Most people will find the solr-upgrade-notes.adoc file more approachable.
 <a href="https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc">https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc</a>
 </p>
-<h2><a id="v8.11.3" href="javascript:toggleList('v8.11.3')">Release 8.11.3 </a></h2>
+<h2><a id="v8.11.4" href="javascript:toggleList('v8.11.4')">Release 8.11.4 </a></h2>
+<ul id="v8.11.4.list">
+      <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
+</li>
+  </li>
+  <li><a id="v8.11.4.bug_fixes" href="javascript:toggleList('v8.11.4.bug_fixes')">Bug Fixes</a>&nbsp;&nbsp;&nbsp;(3)
+    <ol id="v8.11.4.bug_fixes.list">
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17168">SOLR-17168</a>: Add netty-transport-classes-epoll dependency
+<br /><span class="attrib">(Colvin Cowie)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17417">SOLR-17417</a>: Remove unnecessary code in PKIAuthPlugin and HttpSolrCall
+<br /><span class="attrib">(Houston Putman, janhoy, Liu Huajin)</span></li>
+      <li><a href="http://issues.apache.org/jira/browse/SOLR-17418">SOLR-17418</a>: Streamline ConfigSet modification logic.
+<br /><span class="attrib">(Houston Putman, Liu Huajin)</span></li>
+    </ol>
+  </li>
+</ul>
+<h2><a id="v8.11.3" href="javascript:toggleList('v8.11.3')">Release 8.11.3  [2024-02-08]</a></h2>
 <ul id="v8.11.3.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
@@ -253,7 +269,9 @@ Attempts to set them the old way are no-op and log a warning.
     </ol>
   </li>
 </ul>
-<h2><a id="v8.11.2" href="javascript:toggleList('v8.11.2')">Release 8.11.2  [2022-06-17]</a></h2>
+<h2><a id="older" href="javascript:toggleList('older')">Older Releases</a></h2>
+<ul id="older.list">
+<h3><a id="v8.11.2" href="javascript:toggleList('v8.11.2')">Release 8.11.2  [2022-06-17]</a></h3>
 <ul id="v8.11.2.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
@@ -323,8 +341,6 @@ but look like nonsense to Calcite, such as AND'd filters on the same multi-value
     </ol>
   </li>
 </ul>
-<h2><a id="older" href="javascript:toggleList('older')">Older Releases</a></h2>
-<ul id="older.list">
 <h3><a id="v8.11.1" href="javascript:toggleList('v8.11.1')">Release 8.11.1  [2021-12-16]</a></h3>
 <ul id="v8.11.1.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.

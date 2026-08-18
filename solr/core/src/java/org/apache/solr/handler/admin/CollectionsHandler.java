@@ -162,18 +162,7 @@ import static org.apache.solr.common.params.CommonAdminParams.WAIT_FOR_FINAL_STA
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.params.CommonParams.TIMING;
 import static org.apache.solr.common.params.CommonParams.VALUE_LONG;
-import static org.apache.solr.common.params.CoreAdminParams.BACKUP_ID;
-import static org.apache.solr.common.params.CoreAdminParams.BACKUP_LOCATION;
-import static org.apache.solr.common.params.CoreAdminParams.BACKUP_PURGE_UNUSED;
-import static org.apache.solr.common.params.CoreAdminParams.BACKUP_REPOSITORY;
-import static org.apache.solr.common.params.CoreAdminParams.DATA_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_DATA_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_INDEX;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_INSTANCE_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_METRICS_HISTORY;
-import static org.apache.solr.common.params.CoreAdminParams.INSTANCE_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.MAX_NUM_BACKUP_POINTS;
-import static org.apache.solr.common.params.CoreAdminParams.ULOG_DIR;
+import static org.apache.solr.common.params.CoreAdminParams.*;
 import static org.apache.solr.common.params.ShardParams._ROUTE_;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
@@ -1214,6 +1203,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       if (repo != null) {
         params.put(BACKUP_REPOSITORY, repo);
       }
+      params.put(TRUSTED, ConfigSetsHandler.isTrusted(req, h.coreContainer.getAuthenticationPlugin()));
       // from CREATE_OP:
       copy(req.getParams(), params, COLL_CONF, REPLICATION_FACTOR, NRT_REPLICAS, TLOG_REPLICAS,
           PULL_REPLICAS, MAX_SHARDS_PER_NODE, STATE_FORMAT, AUTO_ADD_REPLICAS, CREATE_NODE_SET, CREATE_NODE_SET_SHUFFLE,

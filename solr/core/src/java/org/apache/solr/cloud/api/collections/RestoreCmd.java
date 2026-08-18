@@ -152,6 +152,7 @@ public class RestoreCmd implements OverseerCollectionMessageHandler.Cmd {
     final URI location;
     final URI backupPath;
     final List<String> nodeList;
+    final boolean requestIsTrusted;
 
     final CoreContainer container;
     final BackupRepository repository;
@@ -167,6 +168,7 @@ public class RestoreCmd implements OverseerCollectionMessageHandler.Cmd {
       this.asyncId = message.getStr(ASYNC);
       this.repo = message.getStr(CoreAdminParams.BACKUP_REPOSITORY);
       this.backupId = message.getInt(CoreAdminParams.BACKUP_ID, -1);
+      this.requestIsTrusted = message.getBool(CoreAdminParams.TRUSTED, false);
 
       this.container = ocmh.overseer.getCoreContainer();
       this.repository = this.container.newBackupRepository(Optional.ofNullable(repo));
@@ -243,7 +245,8 @@ public class RestoreCmd implements OverseerCollectionMessageHandler.Cmd {
       uploadConfig(rc.backupProperties.getConfigName(),
               rc.restoreConfigName,
               rc.zkStateReader,
-              rc.backupManager);
+              rc.backupManager,
+              rc.requestIsTrusted);
 
       log.info("Starting restore into collection={} with backup_name={} at location={}", rc.restoreCollectionName, rc.backupName,
               rc.location);
@@ -302,13 +305,13 @@ public class RestoreCmd implements OverseerCollectionMessageHandler.Cmd {
       }
     }
 
-    private void uploadConfig(String configName, String restoreConfigName, ZkStateReader zkStateReader, BackupManager backupMgr) throws IOException {
+    private void uploadConfig(String configName, String restoreConfigName, ZkStateReader zkStateReader, BackupManager backupMgr, boolean requestIsTrusted) throws IOException {
       if (zkStateReader.getConfigManager().configExists(restoreConfigName)) {
         log.info("Using existing config {}", restoreConfigName);
         //TODO add overwrite option?
       } else {
         log.info("Uploading config {}", restoreConfigName);
-        backupMgr.uploadConfigDir(configName, restoreConfigName);
+        backupMgr.uploadConfigDir(configName, restoreConfigName, requestIsTrusted);
       }
     }
 
