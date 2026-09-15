@@ -117,7 +117,7 @@
          * the first two releases, or the current URL has a fragment and the
          * fragment refers to the current item or one of its ancestors.
          */
-        if (list.id != 'v8.11.4.3.4.3.0-1.list'
+        if (list.id != 'v8.11.4.3.4.3.0-SNAPSHOT.list'
             && list.id != 'v8.11.2.list'
             && list.className != 'bulleted-list'
             && (currentAnchor == ''
@@ -141,7 +141,7 @@
       for (var i = 0 ; i < anchors.length; i++) {
         var anchor = anchors[i];
         if (anchor.id != '') {
-          if (anchor.id == 'v8.11.4.3.4.3.0-1' || anchor.id == 'v8.11.2') {
+          if (anchor.id == 'v8.11.4.3.4.3.0-SNAPSHOT' || anchor.id == 'v8.11.2') {
             anchor.title = 'Click to collapse';
           } else {
             anchor.title = 'Click to expand';
@@ -176,8 +176,8 @@
 Most people will find the solr-upgrade-notes.adoc file more approachable.
 <a href="https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc">https://github.com/apache/solr/blob/main/solr/solr-ref-guide/src/solr-upgrade-notes.adoc</a>
 </p>
-<h2><a id="v8.11.4.3.4.3.0-1" href="javascript:toggleList('v8.11.4.3.4.3.0-1')">Release 8.11.4.3.4.3.0-1 </a></h2>
-<ul id="v8.11.4.3.4.3.0-1.list">
+<h2><a id="v8.11.4.3.4.3.0-SNAPSHOT" href="javascript:toggleList('v8.11.4.3.4.3.0-SNAPSHOT')">Release 8.11.4.3.4.3.0-SNAPSHOT </a></h2>
+<ul id="v8.11.4.3.4.3.0-SNAPSHOT.list">
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
   </li>
@@ -197,14 +197,14 @@ Most people will find the solr-upgrade-notes.adoc file more approachable.
       <li>Consult the <a href="${lucene.javadoc.url}changes/Changes.html">LUCENE_CHANGES.txt</a> file for additional, low level, changes in this release.
 </li>
   </li>
-  <li><a id="v8.11.4.3.4.3.0-1.new_features" href="javascript:toggleList('v8.11.4.3.4.3.0-1.new_features')">New Features</a>&nbsp;&nbsp;&nbsp;(1)
-    <ol id="v8.11.4.3.4.3.0-1.new_features.list">
+  <li><a id="v8.11.4.3.4.3.0-SNAPSHOT.new_features" href="javascript:toggleList('v8.11.4.3.4.3.0-SNAPSHOT.new_features')">New Features</a>&nbsp;&nbsp;&nbsp;(1)
+    <ol id="v8.11.4.3.4.3.0-SNAPSHOT.new_features.list">
       <li><a href="http://issues.apache.org/jira/browse/SOLR-15694">SOLR-15694</a>, 15715: Node roles and dedicated query coordinator nodes
 <br /><span class="attrib">(Hitesh Khamesra, Ishan Chattopadhyaya, noble)</span></li>
     </ol>
   </li>
-  <li><a id="v8.11.4.3.4.3.0-1.bug_fixes" href="javascript:toggleList('v8.11.4.3.4.3.0-1.bug_fixes')">Bug Fixes</a>&nbsp;&nbsp;&nbsp;(14)
-    <ol id="v8.11.4.3.4.3.0-1.bug_fixes.list">
+  <li><a id="v8.11.4.3.4.3.0-SNAPSHOT.bug_fixes" href="javascript:toggleList('v8.11.4.3.4.3.0-SNAPSHOT.bug_fixes')">Bug Fixes</a>&nbsp;&nbsp;&nbsp;(14)
+    <ol id="v8.11.4.3.4.3.0-SNAPSHOT.bug_fixes.list">
       <li><a href="http://issues.apache.org/jira/browse/SOLR-16429">SOLR-16429</a>: Add AWS STS support in s3-repository
 <br /><span class="attrib">(Josh Souza via Houston Putman and Kevin Risden)</span></li>
       <li><a href="http://issues.apache.org/jira/browse/SOLR-14679">SOLR-14679</a>: Fix continuously growing TLOGs on TLOG replicas
@@ -237,16 +237,16 @@ updates of the same document in separate requests using commitWithin.
 <br /><span class="attrib">(Calvin Smith, Christine Poerschke)</span></li>
     </ol>
   </li>
-  <li><a id="v8.11.4.3.4.3.0-1.optimizations" href="javascript:toggleList('v8.11.4.3.4.3.0-1.optimizations')">Optimizations</a>&nbsp;&nbsp;&nbsp;(2)
-    <ol id="v8.11.4.3.4.3.0-1.optimizations.list">
+  <li><a id="v8.11.4.3.4.3.0-SNAPSHOT.optimizations" href="javascript:toggleList('v8.11.4.3.4.3.0-SNAPSHOT.optimizations')">Optimizations</a>&nbsp;&nbsp;&nbsp;(2)
+    <ol id="v8.11.4.3.4.3.0-SNAPSHOT.optimizations.list">
       <li><a href="http://issues.apache.org/jira/browse/SOLR-16555">SOLR-16555</a>: SolrIndexSearcher - FilterCache intersections/andNot should not clone bitsets repeatedly
 <br /><span class="attrib">(Kevin Risden, David Smiley)</span></li>
       <li><a href="http://issues.apache.org/jira/browse/SOLR-17004">SOLR-17004</a>: ZkStateReader waitForState should check clusterState before using watchers
 <br /><span class="attrib">(Kevin Risden)</span></li>
     </ol>
   </li>
-  <li><a id="v8.11.4.3.4.3.0-1.other_changes" href="javascript:toggleList('v8.11.4.3.4.3.0-1.other_changes')">Other Changes</a>&nbsp;&nbsp;&nbsp;(9)
-    <ol id="v8.11.4.3.4.3.0-1.other_changes.list">
+  <li><a id="v8.11.4.3.4.3.0-SNAPSHOT.other_changes" href="javascript:toggleList('v8.11.4.3.4.3.0-SNAPSHOT.other_changes')">Other Changes</a>&nbsp;&nbsp;&nbsp;(9)
+    <ol id="v8.11.4.3.4.3.0-SNAPSHOT.other_changes.list">
       <li><a href="http://issues.apache.org/jira/browse/SOLR-16141">SOLR-16141</a>: Upgrade Apache Tika to 1.28.4
 <br /><span class="attrib">(Kevin Risden)</span></li>
       <li><a href="http://issues.apache.org/jira/browse/SOLR-16324">SOLR-16324</a>: Upgrade commons-configuration2 to 2.8.0 and commons-text to 1.9
