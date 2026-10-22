@@ -15,6 +15,8 @@ New Features
 
 Bug Fixes
 ---------------------
+* SOLR-17417: Remove unnecessary code in PKIAuthPlugin and HttpSolrCall  (Houston Putman, janhoy, Liu Huajin)
+
 * SOLR-16429: Add AWS STS support in s3-repository (Josh Souza via Houston Putman and Kevin Risden)
 
 * SOLR-14679: Fix continuously growing TLOGs on TLOG replicas (Viktor Molnár via Houston Putman)
